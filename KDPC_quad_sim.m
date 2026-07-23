@@ -37,8 +37,10 @@ plant_mode = 'physics';   % 'lifted_state' : plant = lifted model, controller
                                %                  network (Phase 1b — output feedback)
                                % 'physics'      : Phase 2, TODO
 
-offset_phys = [-0.4; 0.4; -0.3; zeros(6,1)];   % initial offset from target:
-                                               % [x y z yaw vx vy vz qx qy]
+% initial offset from target in the full output ordering
+% [x y z yaw vx vy vz qx qy]; sliced to the active ny (extra states default to 0)
+offset_full = [-0.4; 0.4; -0.3; zeros(6,1)];
+offset_phys = offset_full(1:ny);
 
 % Approximate linear readout y(k+1) ~ C z(k) + D u(k) from the readout layer
 C = weight3(1:ny, 1:n_basis);
@@ -168,7 +170,9 @@ for k = 1:Tsim
             yaw_raw  = atan2(2*(q(1)*q(4)+q(2)*q(3)), 1-2*(q(3)^2+q(4)^2));
             yaw_phys = yaw_prev + atan2(sin(yaw_raw-yaw_prev), cos(yaw_raw-yaw_prev));
             yaw_prev = yaw_phys;                           % online unwrap (training used unwrapped yaw)
-            y_phys  = [x_plant(1:3); yaw_phys; x_plant(4:6); q(2); q(3)];
+            % full candidate output ordering [x y z yaw vx vy vz qx qy], sliced to ny
+            y_full  = [x_plant(1:3); yaw_phys; x_plant(4:6); q(2); q(3)];
+            y_phys  = y_full(1:ny);
             y_next  = (y_phys - y_mean(:)) ./ y_std(:);    % normalize
     end
     % ------------------------------------------

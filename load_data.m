@@ -5,6 +5,7 @@
 %
 % Inputs  u: 4 motor speeds [rad/s]           -> normalized deviation from mean (~hover)
 % Outputs y: position x,y,z [m] + yaw [rad]   -> normalized deviation from train mean
+%           optionally extended with [vx vy vz qx qy] (see include_extra_states)
 %
 % Saves to data/:
 %   u_data.mat, y_data.mat            train data (T x 4 each), normalized
@@ -16,12 +17,20 @@ clc; close all; clear all;
 
 Ts = 0.01;   % 100 Hz
 
+% ----- Output selection --------------------------------------------------
+% y always starts with the controlled outputs [x y z yaw]. Set the flag to true
+% to append the extra states [vx vy vz qx qy], which make the internal dynamics
+% observable to the Koopman lifting. false -> optimize on the 4 controlled
+% outputs only. The ordering is fixed as [x y z yaw vx vy vz qx qy] so every
+% downstream file just uses the first ny entries.
+include_extra_states = false;
+
 train_files = dir(fullfile('data','train','*.csv'));
 test_files  = dir(fullfile('data','test','*.csv'));
 assert(~isempty(train_files),'No CSVs found in data/train — run from the project folder.')
 
-[u_train, y_train, run_lengths]      = load_runs(train_files);
-[u_test,  y_test,  run_lengths_test] = load_runs(test_files);
+[u_train, y_train, run_lengths]      = load_runs(train_files, include_extra_states);
+[u_test,  y_test,  run_lengths_test] = load_runs(test_files,  include_extra_states);
 
 %% Scaling — statistics from TRAIN data only
 u_mean = mean(u_train);    % per-motor mean ~ hover speed
@@ -52,7 +61,7 @@ subplot(3,1,2); plot(y_train(:,4));   ylabel('yaw [rad]'); grid on
 subplot(3,1,3); plot(u_train);        ylabel('\Omega [rad/s]'); xlabel('sample'); grid on
 
 %% ------------------------------------------------------------------------
-function [U, Y, lens] = load_runs(files)
+function [U, Y, lens] = load_runs(files, include_extra)
 U = []; Y = []; lens = [];
 for k = 1:length(files)
     T = readtable(fullfile(files(k).folder, files(k).name));
@@ -60,9 +69,13 @@ for k = 1:length(files)
     % yaw from quaternion (ZYX convention), unwrapped to avoid +/-pi jumps
     yaw = atan2(2*(T.qw.*T.qz + T.qx.*T.qy), 1 - 2*(T.qy.^2 + T.qz.^2));
     yaw = unwrap(yaw);
-    % outputs: position + yaw (controlled) PLUS velocities and roll/pitch
-    % quaternion components (make the internal state observable to the lifting)
-    y = [T.x, T.y, T.z, yaw, T.vx, T.vy, T.vz, T.qx, T.qy];
+    % controlled outputs: position + yaw
+    y = [T.x, T.y, T.z, yaw];
+    if include_extra
+        % extra states: velocities and roll/pitch quaternion components
+        % (make the internal state observable to the lifting)
+        y = [y, T.vx, T.vy, T.vz, T.qx, T.qy];
+    end
     U = [U; u];  Y = [Y; y];  lens = [lens; height(T)];
 end
 end
