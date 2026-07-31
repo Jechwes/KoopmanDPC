@@ -18,3 +18,9 @@ slprj/
 Thumbs.db
 .idea/
 .vscode/
+
+# acados
+c_generated_code/
+build/
+*.mexw64
+*.json
