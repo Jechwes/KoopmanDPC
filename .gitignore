@@ -8,6 +8,9 @@ __pycache__/
 # Large data files (kept local)
 data/
 
+# Figures
+figures/
+
 # MATLAB
 *.asv
 *.autosave

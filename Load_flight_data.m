@@ -8,7 +8,7 @@ Ts = 0.01 * decimate;
 
 train_files = dir(fullfile('data','train','*.csv'));
 test_files  = dir(fullfile('data','test','*.csv'));
-assert(~isempty(train_files), 'no CSVs in data/train -- run from the JCVW_QUAD_ folder');
+assert(~isempty(train_files), 'no CSVs in data/train -- run from the project folder');
 
 [u_train, y_train, run_lengths]      = load_runs(train_files, decimate, prm);
 [u_test,  y_test,  run_lengths_test] = load_runs(test_files,  decimate, prm);

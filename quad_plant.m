@@ -1,5 +1,5 @@
 function [x, st, w_app] = quad_plant(x, v_cmd, t, prm, lim, inner, Ts_outer, Ts_inner, st)
-%QUAD_PLANT  Advance the plant one OUTER step under a [T_spec; om_ref] command.
+% QUAD_PLANT  Advance the plant one OUTER step under a [T_spec; om_ref] command.
 %
 %   x      13x1 state [p(3); v(3); q(4, w first); om(3)]
 %   v_cmd  4x1 [T_spec (m/s^2); om_ref (rad/s)]      <- what SPC outputs
@@ -23,8 +23,7 @@ end
 
 %% ------------------------------------------------------------------------
 function [tau_cmd, st] = rate_pid(om_sp, x, inner, Ts, st, lim)
-% Inner attitude-RATE loop: body-rate setpoint -> body torque, 500 Hz.
-% Derivative on the measurement, conditional-integration anti-windup.
+% inner attitude-rATE loop: body-rate setpoint -> body torque, 500 Hz.
 if isempty(st)
     st = struct('e_int', zeros(3,1), 'om_prev', x(11:13));
 end
@@ -51,8 +50,7 @@ end
 
 %% ------------------------------------------------------------------------
 function [T_app, tau_app] = actuator_sat(T_cmd, tau_cmd, prm, lim)
-% A wrench is only achievable if the four rotor speeds it implies are inside
-% [omega_min, omega_max]. Map through the mixer, clip, map back.
+% apply actuator saturation
 T_cmd   = max(min(T_cmd,   lim.T_max), lim.T_min);
 tau_cmd = max(min(tau_cmd, lim.tau_max(:)), -lim.tau_max(:));
 
@@ -66,7 +64,7 @@ end
 
 %% ------------------------------------------------------------------------
 function xdot = quad_dynamics(t, x, u, prm)
-% Continuous-time 13-state rigid body.
+% continuous-time 13-state rigid body. x = [x;v;q;om]
 v  = x(4:6);
 q  = x(7:10)/norm(x(7:10));
 om = x(11:13);

@@ -1,16 +1,5 @@
 %% Nonlinear MPC baseline (acados)
-% Same role as KDPC_RSRFG/Pendulum/NMPC.m, but solved with acados rather than
-% YALMIP+fmincon. A 20-stage, 13-state multiple-shooting NLP has a block-banded
-% KKT system that HPIPM factorises stage by stage; fmincon treats it as one
-% dense block and reports RCOND ~ 1e-21 on this problem. The pendulum gets away
-% with fmincon at 3 variables per stage; this has 17.
-%
-% This is the ceiling for the comparison: it uses the TRUE model, so
-%   RMSE_NMPC <= RMSE_KDPC <= RMSE_SPC
-% Run it before any Koopman work to see how much headroom a better model buys.
-%
-% Requires acados on the path (run acados_startup.m / env.sh first).
-clc; clear all;
+clc; clear all; 
 % close all;
 
 [prm, lim, inner] = quad_params();
@@ -22,9 +11,7 @@ t_end    = 40;
 N     = 20;                               % same horizon as SPC
 k_sim = round(t_end/Ts);
 
-% Weights. Position and yaw match SPC.m; velocity and body rate get small
-% damping terms, which SPC gets implicitly through its terminal DARE cost on
-% the whole delay embedding.
+% Weights
 Wp = [10 10 10];                          % position
 Wv = [0.1 0.1 0.1];                       % velocity damping
 Ww = [0.05 0.05 0.05];                    % body-rate damping
@@ -33,21 +20,13 @@ Wt = [1e3 1e3 1e4];                       % torque effort (tau ~ 1e-3 N*m)
 
 p_hover = [0; 0; 1.4];
 
-% Reference, matching SPC.m. Keep w_sp in step with SPC.m or the two baselines
-% are flying different trajectories and the comparison is meaningless.
-% NOTE p_hover: SPC.m takes it from the scalers, so with data = 'real' it sits
-% at the flight data's mean position, ~7 cm from [0;0;1.4]. Compare like for
-% like, or set the value below to match.
-A_sp = 1.2;  B_sp = 0.8;  C_sp = 0.4;  w_sp = 0.4;
+% Reference
+A_sp = 1.2;  B_sp = 0.8;  C_sp = 0.4;  w_sp = 1.0;
 r_pos = @(t) p_hover + [A_sp*sin(w_sp*t); B_sp*sin(2*w_sp*t); C_sp*sin(w_sp*t)];
 r_vel = @(t) [ A_sp*w_sp  *cos(w_sp*t);  2*B_sp*w_sp  *cos(2*w_sp*t);  C_sp*w_sp  *cos(w_sp*t)];
 r_acc = @(t) [-A_sp*w_sp^2*sin(w_sp*t); -4*B_sp*w_sp^2*sin(2*w_sp*t); -C_sp*w_sp^2*sin(w_sp*t)];
 r_jrk = @(t) [-A_sp*w_sp^3*cos(w_sp*t); -8*B_sp*w_sp^3*cos(2*w_sp*t); -C_sp*w_sp^3*cos(w_sp*t)];
 
-% Start ON the trajectory, as SPC.m does: velocity from the reference, attitude
-% from the required acceleration, body rate from the jerk (differential
-% flatness). Otherwise NMPC spends the first second catching up and the RMSE
-% is dominated by a start-up transient SPC does not have.
 a0 = r_acc(0);  j0 = r_jrk(0);
 zb = [a0(1); a0(2); a0(3) + g];  zb = zb/norm(zb);       % body z axis
 sq = sqrt(2*(1 + zb(3)));                                % q rotating [0;0;1] -> zb
@@ -60,13 +39,6 @@ x0_traj = [r_pos(0); r_vel(0); q0; om0];
 assert(~isempty(which('AcadosOcp')), 'acados not on the path -- run acados_startup.m');
 
 %% Setup the solver
-% state x = [p(3); v(3); q(4, w first); om(3)]   (13)
-% input u = [T(1); tau(3)]                        (4)   -- the WRENCH
-%
-% NMPC plans over the true rigid body with torque as the input, then hands the
-% inner loop only [T/m; om_des], where om_des is taken from the optimised state
-% at node 1. So the plant sees exactly the signal SPC commands and nothing
-% below the outer loop differs between the two.
 import casadi.*
 nx = 13;  nu = 4;
 

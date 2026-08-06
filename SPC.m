@@ -1,4 +1,4 @@
-%% N-step ahead predictor -- SPC on simulated or on real flight data
+%% SPC with an inner-loop attitude rate PID on simulated or on real flight data
 clc; clear;
 % close all;
 
@@ -31,7 +31,7 @@ case 'sim'
     tag = '';
 case 'real'
     % cost weights, physical units
-    % Note: 'real' needs higher RU_wz cost and Tini
+    % Note: 'real' needs higher RU_wz (due to yaw underexcited) cost and Tini
     Qy_phys = [10; 10; 10; 1];           % x y z yaw
     Ru_phys = [0.1; 2.0; 2.0; 200];
     N    = 20;
@@ -50,6 +50,12 @@ otherwise
 end
 assert(strcmp(source, data), ...
        'scalers were saved with source = ''%s'' but data = ''%s''', source, data);
+
+% Generate_data now logs y = [x y z yaw b3x b3y b3z]. The b3 channels exist for
+% the KDPC lifting; SPC uses only the four tracked outputs.
+y_data      = y_data(:,      1:4);
+y_data_test = y_data_test(:, 1:4);
+y_mean      = y_mean(1:4);
 
 nu = size(u_data,2);  ny = size(y_data,2);
 n_ini = (Tini-1)*nu + Tini*ny;
@@ -117,7 +123,7 @@ objective = yVar'*Omega*yVar + uVar'*Psi*uVar + zN'*P_term*zN;
 
 constraints = [yVar == P1*uini + P2*yini + Gamma*uVar];
 
-% input box: the actuator envelope, as a deviation from trim
+% input box: the actuator 
 u_lo = [lim.T_spec(1); -lim.w_cmd*ones(3,1)] - u_mean(:);
 u_hi = [lim.T_spec(2);  lim.w_cmd*ones(3,1)] - u_mean(:);
 constraints = [constraints, repmat(u_lo,N,1) <= uVar <= repmat(u_hi,N,1)];
@@ -128,8 +134,8 @@ Outputs    = {uVar,yVar};
 options = sdpsettings('solver','QUADPROG','verbose',0,'debug',0);
 controller = optimizer(constraints, objective, options, Parameters, Outputs);
 
-%% initial conditions
-% start from rest
+%% initialize
+% start from rest 
 % x  = [r_pos(0); zeros(3,1); 1;0;0;0; zeros(3,1)]
 
 % start on the trajectory
@@ -156,41 +162,41 @@ P_ref = zeros(k_sim+1,3);   P_ref(1,:) = r_pos(0).';
 t_SPC = (0:k_sim)*Ts;
 n_ok  = k_sim;
 
-%%
+%% main loop
 for i = 1:k_sim
-tic;
+    fprintf("running step %d of %d \n", i , k_sim)
+    
+    OUT = controller({U_ini,Y_ini});
 
-%%% u_ini & y_ini
-OUT = controller({U_ini,Y_ini});
+    Uk = OUT{1};
 
-Uk = OUT{1};
+    u_mpc     = Uk(1:nu);
+    uSPC(:,i) = u_mpc;
+    th(i)     = toc;
 
-u_mpc     = Uk(1:nu);
-uSPC(:,i) = u_mpc;
-th(i)     = toc;
+    % output update
+    v_cmd = u_mpc + u_mean(:);                      % [T_spec; om_ref]
+    [x, st] = quad_plant(x, v_cmd, (i-1)*Ts, prm, lim, inner, Ts, Ts_inner, st);
 
-% output update 
-v_cmd = u_mpc + u_mean(:);                      % [T_spec; om_ref]
-[x, st] = quad_plant(x, v_cmd, (i-1)*Ts, prm, lim, inner, Ts, Ts_inner, st);
+    q  = x(7:10);
+    yr = atan2(2*(q(1)*q(4)+q(2)*q(3)), 1-2*(q(3)^2+q(4)^2));
+    yaw_prev = yaw_prev + atan2(sin(yr-yaw_prev), cos(yr-yaw_prev));
 
-q  = x(7:10);
-yr = atan2(2*(q(1)*q(4)+q(2)*q(3)), 1-2*(q(3)^2+q(4)^2));
-yaw_prev = yaw_prev + atan2(sin(yr-yaw_prev), cos(yr-yaw_prev));
+    p_ref_next = r_pos(i*Ts);
+    y_next     = measure(x, yaw_prev, p_ref_next, y_mean);
 
-p_ref_next = r_pos(i*Ts);
-y_next     = measure(x, yaw_prev, p_ref_next, y_mean);
+    Y_ini = [Y_ini(ny+1:end); y_next];
+    U_ini = [U_ini(nu+1:end); u_mpc];
 
-Y_ini = [Y_ini(ny+1:end); y_next];
-U_ini = [U_ini(nu+1:end); u_mpc];
+    ySPC(:,i)    = y_next;
+    X_log(i+1,:) = x.';
+    P_ref(i+1,:) = p_ref_next.';
 
-ySPC(:,i)    = y_next;
-X_log(i+1,:) = x.';
-P_ref(i+1,:) = p_ref_next.';
-
-if ~all(isfinite(x)) || norm(x(1:3) - p_ref_next) > 50
-    warning('diverged at t = %.2f s', i*Ts);
-    n_ok = i;  break
-end
+    % sim stops when the drone diverges to much
+    if ~all(isfinite(x)) || norm(x(1:3) - p_ref_next) > 50
+        warning('diverged at t = %.2f s', i*Ts);
+        n_ok = i;  break
+    end
 end
 
 uSPC = uSPC(:,1:n_ok);  ySPC = ySPC(:,1:n_ok);  th = th(1:n_ok);
@@ -235,7 +241,7 @@ legend('flown','reference'); view(3);
 
 save(['data/SPC' tag], 't_SPC','ySPC','uSPC','X_log','P_ref')
 
-%% ------------------------------------------------------------------------
+%% helpers
 function y = measure(x, yaw, p_sp, y_mean)
 y_ref = y_mean(:);  y_ref(1:3) = p_sp(:);
 y     = [x(1:3); yaw] - y_ref;
