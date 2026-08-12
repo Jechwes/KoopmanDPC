@@ -119,7 +119,7 @@ yini = sdpvar(Tini*ny,1);
 uini = sdpvar(nU,1);
 
 zN        = AN*[uini; yini] + Sn*uVar;
-objective = yVar'*Omega*yVar + uVar'*Psi*uVar + zN'*P_term*zN;
+objective = yVar'*Omega*yVar + uVar'*Psi*uVar; %+ zN'*P_term*zN;
 
 constraints = [yVar == P1*uini + P2*yini + Gamma*uVar];
 
