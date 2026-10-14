@@ -1,0 +1,7 @@
+cflib
+motioncapture
+numpy
+scipy
+osqp
+pyyaml
+matplotlib

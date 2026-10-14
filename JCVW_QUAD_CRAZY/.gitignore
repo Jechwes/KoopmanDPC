@@ -1,0 +1,23 @@
+# Python virtual environment (recreate with requirements.txt, see README.md)
+quad_env/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# cflib TOC/param cache (regenerated on connect)
+cache/
+
+# Flight data and run logs (large, kept local)
+data/
+logs/
+
+# Old runs (tracked history replaces these)
+archive_old/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/

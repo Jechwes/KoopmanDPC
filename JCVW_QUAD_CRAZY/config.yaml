@@ -1,0 +1,62 @@
+crazyflie:
+  uri: radio://0/80/2M/E7E7E7E7B4
+  mass_kg: 0.0375              # not weighed; calibrated together with thrust_max_N
+
+vicon:
+  hostname: "10.128.7.250"
+  object_name: "cfb4"
+
+loop:
+  spc_hz: 25                   # outer loop; Ts = 1/spc_hz
+  extpose_hz: 100              # pose fed to the onboard EKF
+  log_period_ms: 10
+
+model:
+  Tini: 30
+  N: 30
+  use_phi: true          # false = SPC; true = Koopman SPC (adds phi_nl)
+
+weights:
+  Qy: [10.0, 10.0, 10.0, 1.0]           # x y z yaw
+  Ru: [0.00412, 0.0328, 0.0328, 2.0]    # alpha_T wx wy wz
+
+spc_box:
+  alpha_T_rel: [0.58, 1.42]  # x hover alpha_T
+  omega: 3                 # rad/s
+
+solver:
+  osqp_eps: 1.0e-3             # OSQP default, as in the thesis. 1e-6 tracked the
+                               # same in simulation at 2-5x the solve time
+
+limits:
+  alpha_T: [4.9, 15.7]         # m/s^2, keep inside the excitation envelope
+  omega: 3.0                   # rad/s, per axis
+  pwm: [10001, 60000]          # brushless cf2.1 stalls below ~10000
+  geofence_xy: 1.5             # m, +/- about the hover point
+  geofence_z: [0.3, 2.0]       # m, absolute
+  tilt_deg: 40                 # measured tilt abort
+  vicon_timeout_s: 0.15
+  vbat_min: 3.30
+
+convert:
+  thrust_max_N: 0.78
+  roll_tx_sign: 1.0
+  pitch_tx_sign: 1.0
+  yawrate_tx_sign: -1.0
+  frame_verified: true
+
+pid:                           # laptop-side outer loop, data collection only
+  Kp_pos: [3.0, 3.0, 6.0]
+  Kd_pos: [2.6, 2.6, 4.0]
+  K_att: 4.0
+  tilt_max_deg: 35
+
+collect:
+  hover: [0.0, 0.0, 1.0]
+  ref_box: [0.8, 0.8, 0.4]     # +/- m about hover, the difficulty knob
+  ref_hold_s: 2.0
+  yaw_amp: 0.6                 # rad
+  dither_T: 0.8                # std, specific thrust [m/s^2]
+  dither_w: 0.35               # std, body rate [rad/s]
+  settle_s: 3.0
+  duration_s: 60.0

@@ -1,0 +1,79 @@
+collect:
+  dither_T: 0.0
+  dither_w: 0.0
+  duration_s: 15.0
+  hover:
+  - 0.0
+  - 0.0
+  - 1.0
+  ref_box:
+  - 0.0
+  - 0.0
+  - 0.0
+  ref_hold_s: 2.0
+  settle_s: 3.0
+  yaw_amp: 0.0
+convert:
+  frame_verified: true
+  pitch_tx_sign: 1.0
+  roll_tx_sign: 1.0
+  thrust_max_N: 0.78
+  yawrate_tx_sign: -1.0
+crazyflie:
+  mass_kg: 0.0375
+  uri: radio://0/80/2M/E7E7E7E7B4
+limits:
+  alpha_T:
+  - 4.9
+  - 15.7
+  geofence_xy: 1.5
+  geofence_z:
+  - 0.3
+  - 2.0
+  omega: 3.0
+  pwm:
+  - 10001
+  - 60000
+  tilt_deg: 40
+  vbat_min: 3.3
+  vicon_timeout_s: 0.15
+loop:
+  extpose_hz: 100
+  log_period_ms: 10
+  spc_hz: 25
+model:
+  N: 30
+  Tini: 30
+  use_phi: false
+pid:
+  K_att: 4.0
+  Kd_pos:
+  - 2.6
+  - 2.6
+  - 4.0
+  Kp_pos:
+  - 3.0
+  - 3.0
+  - 6.0
+  tilt_max_deg: 35
+solver:
+  osqp_eps: 0.001
+spc_box:
+  alpha_T_rel:
+  - 0.683
+  - 1.317
+  omega: 0.785
+vicon:
+  hostname: 10.128.7.250
+  object_name: cfb4
+weights:
+  Qy:
+  - 10.0
+  - 10.0
+  - 10.0
+  - 1.0
+  Ru:
+  - 0.00412
+  - 0.0328
+  - 0.0328
+  - 2.0
