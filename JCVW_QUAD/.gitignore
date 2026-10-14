@@ -1,0 +1,29 @@
+# Python virtual environment
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Large data files (kept local)
+data/
+
+# Figures
+figures/
+
+# MATLAB
+*.asv
+*.autosave
+slprj/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# acados
+c_generated_code/
+build/
+*.mexw64
+*.json

@@ -1,29 +1,7 @@
-# Python virtual environment
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-*.egg-info/
-
-# Large data files (kept local)
-data/
-
-# Figures
-figures/
-
-# MATLAB
-*.asv
-*.autosave
-slprj/
-
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-
-# acados
-c_generated_code/
-build/
-*.mexw64
-*.json
+# Only JCVW_QUAD/ and JCVW_QUAD_CRAZY/ are versioned. Everything else at the top
+# level (notes, other people's repos, reference code) stays local.
+# Build artifacts and data are excluded by each folder's own .gitignore.
+/*
+!/.gitignore
+!/JCVW_QUAD/
+!/JCVW_QUAD_CRAZY/
